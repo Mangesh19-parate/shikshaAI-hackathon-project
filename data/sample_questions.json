@@ -1,0 +1,102 @@
+[
+  {
+    "id": "M001",
+    "subject": "Mathematics",
+    "language": "English",
+    "grade": "Grade 10",
+    "topic": "Linear Equations",
+    "question": "Solve for x: 2x + 5 = 15",
+    "expected_answer": "x = 5",
+    "source": "SSC Maharashtra Board — Algebra Sample Paper"
+  },
+  {
+    "id": "M002",
+    "subject": "Mathematics",
+    "language": "Hindi",
+    "grade": "Grade 9",
+    "topic": "Linear Equations",
+    "question": "x के लिए हल करो: 3x - 7 = 14",
+    "expected_answer": "x = 7",
+    "source": "CBSE Class 9 — Linear Equations in Two Variables"
+  },
+  {
+    "id": "M003",
+    "subject": "Mathematics",
+    "language": "Marathi",
+    "grade": "Grade 10",
+    "topic": "Quadratic Equations",
+    "question": "x² - 5x + 6 = 0 हे समीकरण सोडवा.",
+    "expected_answer": "x = 2 किंवा x = 3",
+    "source": "SSC Maharashtra Board — Algebra 2024"
+  },
+  {
+    "id": "M004",
+    "subject": "Mathematics",
+    "language": "English",
+    "grade": "Grade 9",
+    "topic": "Ratio and Proportion",
+    "question": "If a farmer has 36 kg of rice and wants to divide it in ratio 4:5, how many kg does each part get?",
+    "expected_answer": "16 kg and 20 kg",
+    "source": "SSC Board — Arithmetic"
+  },
+  {
+    "id": "M005",
+    "subject": "Mathematics",
+    "language": "Hindi",
+    "grade": "Grade 10",
+    "topic": "Pythagoras Theorem",
+    "question": "एक समकोण त्रिभुज में दो भुजाएँ 6 cm और 8 cm हैं। कर्ण की लंबाई क्या होगी?",
+    "expected_answer": "10 cm",
+    "source": "CBSE Class 10 — Triangles"
+  },
+  {
+    "id": "S001",
+    "subject": "Science",
+    "language": "English",
+    "grade": "Grade 10",
+    "topic": "Chemical Reactions",
+    "question": "What happens when iron rusts? Write the chemical equation for rusting of iron.",
+    "expected_answer": "4Fe + 3O₂ + 6H₂O → 4Fe(OH)₃ (iron hydroxide / rust)",
+    "source": "CBSE Class 10 — Chemical Reactions and Equations"
+  },
+  {
+    "id": "S002",
+    "subject": "Science",
+    "language": "Marathi",
+    "grade": "Grade 10",
+    "topic": "Electricity",
+    "question": "ओहमचा नियम सांगा आणि V = IR हे सूत्र स्पष्ट करा.",
+    "expected_answer": "विद्युत दाब (V) = विद्युत प्रवाह (I) × प्रतिरोध (R)",
+    "source": "SSC Maharashtra — Electricity"
+  },
+  {
+    "id": "S003",
+    "subject": "Science",
+    "language": "Hindi",
+    "grade": "Grade 9",
+    "topic": "Motion",
+    "question": "एक गाड़ी 60 km/h की गति से 2 घंटे चलती है। उसने कुल कितनी दूरी तय की?",
+    "expected_answer": "120 km",
+    "source": "CBSE Class 9 — Motion"
+  },
+  {
+    "id": "S004",
+    "subject": "Science",
+    "language": "English",
+    "grade": "Grade 9",
+    "topic": "Photosynthesis",
+    "question": "Explain photosynthesis in simple terms. What do plants need and what do they produce?",
+    "expected_answer": "Plants use sunlight + water + CO₂ → glucose + oxygen",
+    "source": "CBSE Class 9 — The Fundamental Unit of Life"
+  },
+  {
+    "id": "S005",
+    "subject": "Science",
+    "language": "Marathi",
+    "grade": "Grade 10",
+    "topic": "Acids and Bases",
+    "question": "आम्ल आणि आम्लारी यांच्यातील फरक सांगा. एक उदाहरण द्या.",
+    "expected_answer": "आम्ल: H⁺ आयन देतो (उदा. HCl). आम्लारी: OH⁻ आयन देतो (उदा. NaOH)",
+    "source": "SSC Maharashtra — Acids, Bases and Salts"
+  }
+]

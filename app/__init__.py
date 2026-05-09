@@ -1,0 +1,1 @@
+# PathShala Offline — app package

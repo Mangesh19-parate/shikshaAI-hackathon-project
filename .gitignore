@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.whl
+venv/
+.venv/
+env/
+ENV/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Data / DB
+data/lessons.db
+*.db-shm
+*.db-wal
+
+# Media artefacts (keep the folder, not large binaries)
+media/*.mp4
+media/*.webm
+
+# Model weights — NEVER commit
+*.gguf
+*.bin
+*.safetensors
+models/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Environment
+.env
+.env.*
