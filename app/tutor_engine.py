@@ -1,17 +1,26 @@
 """
-tutor_engine.py — Core AI engine for PathShala Offline
+tutor_engine.py — Core AI engine for PathShala Offline  (Phase 2)
 
 TutorEngine wraps Ollama's local Gemma 3n model and provides:
-  - explain()            — single-shot explanation (Phase 1)
+  - explain()            — single-shot explanation
   - explain_with_retry() — retries if output <100 words (Phase 2)
   - simplify()           — re-prompts for a simpler version (Phase 2)
   - stream_explain()     — generator for live streaming (Phase 2)
+  - quality_check()      — validate output meets pedagogy bar (Phase 2)
 
 All methods gracefully handle the case where Ollama is not running.
 """
 
+import re
+import time
+
 import ollama
-from app.prompts import get_system_prompt
+
+from app.prompts import (
+    FORBIDDEN_ANALOGIES,
+    get_required_sections,
+    get_system_prompt,
+)
 
 
 class TutorEngine:
@@ -44,22 +53,101 @@ class TutorEngine:
         self, question: str, language: str, grade_level: str
     ) -> list[dict]:
         system_prompt = get_system_prompt(language)
-        user_content = (
-            f"[{grade_level} | {language}]\n\n{question}"
-        )
+        user_content = f"[{grade_level} | {language}]\n\n{question}"
         return [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_content},
         ]
 
+    def _extract_content(self, response) -> str:
+        """Extract plain text from an Ollama ChatResponse (Pydantic or dict)."""
+        if hasattr(response, "message"):
+            return response.message.content or ""
+        return response.get("message", {}).get("content", "")
+
+    def _extract_chunk(self, chunk) -> str:
+        """Extract text from a streaming chunk."""
+        if hasattr(chunk, "message"):
+            return chunk.message.content or ""
+        return chunk.get("message", {}).get("content", "")
+
     # ------------------------------------------------------------------
-    # Phase 1: basic single-shot explain
+    # Phase 2.2 — Quality checker
     # ------------------------------------------------------------------
 
-    def explain(self, question: str, language: str = "English", grade_level: str = "Grade 10") -> str:
+    def quality_check(self, text: str, language: str = "English") -> dict:
+        """
+        Validate that an output meets the Phase 2 pedagogy bar.
+
+        Returns a dict:
+          {
+            "passed": bool,
+            "flags": [list of issue strings],
+            "word_count": int,
+            "has_steps": bool,
+            "has_sections": bool,
+            "foreign_analogy": bool,
+            "latex_detected": bool,
+          }
+        """
+        flags = []
+        word_count = len(text.split())
+
+        # 1. Word count
+        has_too_few = word_count < 100
+        has_too_many = word_count > 600
+        if has_too_few:
+            flags.append(f"too_short ({word_count} words, need ≥100)")
+        if has_too_many:
+            flags.append(f"too_long ({word_count} words, prefer ≤500)")
+
+        # 2. Numbered steps
+        has_steps = bool(re.search(r"(Step\s*1|पायरी\s*1|पायदान\s*1)", text))
+        if not has_steps:
+            flags.append("missing_steps (no 'Step 1' or 'पायरी 1' found)")
+
+        # 3. Required sections
+        required = get_required_sections(language)
+        missing_secs = [s for s in required if s.lower() not in text.lower()]
+        has_sections = len(missing_secs) == 0
+        if missing_secs:
+            flags.append(f"missing_sections: {missing_secs}")
+
+        # 4. LaTeX detection
+        latex_detected = bool(re.search(r"\$\$|\\[\(\[]", text))
+        if latex_detected:
+            flags.append("latex_detected — use plain text math instead")
+
+        # 5. Forbidden foreign analogies
+        text_lower = text.lower()
+        found_foreign = [a for a in FORBIDDEN_ANALOGIES if a in text_lower]
+        foreign_analogy = len(found_foreign) > 0
+        if foreign_analogy:
+            flags.append(f"foreign_analogy: {found_foreign}")
+
+        return {
+            "passed": len(flags) == 0,
+            "flags": flags,
+            "word_count": word_count,
+            "has_steps": has_steps,
+            "has_sections": has_sections,
+            "foreign_analogy": foreign_analogy,
+            "latex_detected": latex_detected,
+        }
+
+    # ------------------------------------------------------------------
+    # Phase 1 — basic single-shot explain
+    # ------------------------------------------------------------------
+
+    def explain(
+        self,
+        question: str,
+        language: str = "English",
+        grade_level: str = "Grade 10",
+    ) -> str:
         """
         Ask Gemma to explain the given question.
-        Returns the model's response as a plain string.
+        Returns the model response as a plain string.
         Raises ConnectionError if Ollama is not running.
         """
         if not self._is_ollama_running():
@@ -74,38 +162,59 @@ class TutorEngine:
                 messages=messages,
                 stream=False,
             )
-            # ollama >= 0.4 returns a Pydantic ChatResponse object
-            if hasattr(response, "message"):
-                return response.message.content
-            # fallback for older dict-style response
-            return response["message"]["content"]
+            return self._extract_content(response)
         except Exception as exc:
             raise RuntimeError(f"Model inference failed: {exc}") from exc
 
     # ------------------------------------------------------------------
-    # Phase 2: retry + simplify + streaming
+    # Phase 2.2 — explain_with_retry
     # ------------------------------------------------------------------
 
     def explain_with_retry(
-        self, question: str, language: str = "English", grade_level: str = "Grade 10"
-    ) -> str:
+        self,
+        question: str,
+        language: str = "English",
+        grade_level: str = "Grade 10",
+    ) -> tuple[str, int]:
         """
-        Like explain(), but retries up to max_retries times
-        if the output is shorter than 100 words.
+        Like explain(), but retries up to max_retries times if:
+          - output is shorter than 100 words, OR
+          - quality_check fails (missing sections / wrong language)
+
+        Returns (answer_text, attempt_count).
         """
+        last_result = ""
         for attempt in range(1, self.max_retries + 1):
             result = self.explain(question, language, grade_level)
-            if len(result.split()) >= 100:
-                return result
-            # Too short — retry
-            if attempt < self.max_retries:
-                continue
-        return result  # return whatever we got on last attempt
+            qc = self.quality_check(result, language)
+
+            if qc["passed"] or attempt == self.max_retries:
+                return result, attempt
+
+            # If too short or missing critical sections — retry
+            critical_fail = (
+                qc["word_count"] < 100
+                or not qc["has_steps"]
+                or not qc["has_sections"]
+            )
+            if not critical_fail:
+                # Non-critical issues (e.g., slightly too long) — accept
+                return result, attempt
+
+            last_result = result
+            time.sleep(0.5)  # brief pause before retry
+
+        return last_result, self.max_retries
+
+    # ------------------------------------------------------------------
+    # Phase 2.2 — simplify
+    # ------------------------------------------------------------------
 
     def simplify(self, original_answer: str, language: str = "English") -> str:
         """
-        Given a previous answer, ask the model to re-explain it
-        in even simpler terms — for students who still didn't understand.
+        Given a previous answer the student didn't understand,
+        ask the model to re-explain in even simpler terms with
+        a fresh rural analogy.
         """
         if not self._is_ollama_running():
             raise ConnectionError(
@@ -114,9 +223,27 @@ class TutorEngine:
 
         system_prompt = get_system_prompt(language)
         simplify_instruction = {
-            "English": "The student said they did not understand the previous explanation. Please re-explain using an even simpler analogy — imagine explaining to a 12-year-old in a village. Use the same structured format.",
-            "Hindi": "विद्यार्थी ने कहा कि उन्हें पिछली व्याख्या समझ नहीं आई। कृपया एक और सरल उपमा से दोबारा समझाएं — जैसे गाँव के 12 साल के बच्चे को समझाना हो। वही structured format इस्तेमाल करें।",
-            "Marathi": "विद्यार्थ्याने सांगितले की त्यांना आधीचे उत्तर समजले नाही. कृपया आणखी सोप्या उपमेने पुन्हा समजावून सांगा — जणू गावातील 12 वर्षाच्या मुलाला सांगायचे आहे. तोच structured format वापरा.",
+            "English": (
+                "The student said: 'I still don't understand.' "
+                "Please try again using a completely different, even simpler analogy — "
+                "imagine explaining to a bright 12-year-old in a Nashik village. "
+                "Use the same 4-section format (Problem / Steps / Answer / Try It Yourself). "
+                "Start with a new analogy before the steps."
+            ),
+            "Hindi": (
+                "विद्यार्थी ने कहा: 'मुझे अभी भी समझ नहीं आया।' "
+                "कृपया बिल्कुल नई और सरल उपमा से दोबारा समझाएं — "
+                "जैसे नासिक के गाँव के 12 साल के होशियार बच्चे को समझाना हो। "
+                "वही 4 भाग (समस्या / पायदान / उत्तर / खुद करके देखो) में लिखें। "
+                "Steps से पहले एक नई उपमा से शुरू करें।"
+            ),
+            "Marathi": (
+                "विद्यार्थ्याने सांगितले: 'मला अजूनही समजले नाही.' "
+                "कृपया पूर्णपणे नव्या आणि सोप्या उपमेने पुन्हा समजावून सांगा — "
+                "जणू नाशिकजवळील गावातील 12 वर्षाच्या हुशार मुलाला सांगायचे आहे. "
+                "तेच 4 भाग (समस्या / पायऱ्या / उत्तर / स्वतः करून पहा) वापरा. "
+                "पायऱ्यांपूर्वी नव्या उपमेने सुरुवात करा."
+            ),
         }
 
         messages = [
@@ -124,7 +251,9 @@ class TutorEngine:
             {"role": "assistant", "content": original_answer},
             {
                 "role": "user",
-                "content": simplify_instruction.get(language, simplify_instruction["English"]),
+                "content": simplify_instruction.get(
+                    language, simplify_instruction["English"]
+                ),
             },
         ]
         try:
@@ -133,18 +262,23 @@ class TutorEngine:
                 messages=messages,
                 stream=False,
             )
-            if hasattr(response, "message"):
-                return response.message.content
-            return response["message"]["content"]
+            return self._extract_content(response)
         except Exception as exc:
             raise RuntimeError(f"Simplify failed: {exc}") from exc
 
+    # ------------------------------------------------------------------
+    # Phase 2.2 — stream_explain (live streaming)
+    # ------------------------------------------------------------------
+
     def stream_explain(
-        self, question: str, language: str = "English", grade_level: str = "Grade 10"
+        self,
+        question: str,
+        language: str = "English",
+        grade_level: str = "Grade 10",
     ):
         """
         Generator that yields text chunks from Ollama's streaming API.
-        Use in Streamlit with st.write_stream().
+        Use in Streamlit with st.write_stream() or manual accumulation.
         """
         if not self._is_ollama_running():
             raise ConnectionError(
@@ -158,10 +292,6 @@ class TutorEngine:
             stream=True,
         )
         for chunk in stream:
-            # ollama >= 0.4: chunk is a ChatResponse Pydantic object
-            if hasattr(chunk, "message"):
-                content = chunk.message.content or ""
-            else:
-                content = chunk.get("message", {}).get("content", "")
+            content = self._extract_chunk(chunk)
             if content:
                 yield content

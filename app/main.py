@@ -1,20 +1,24 @@
 """
-main.py — PathShala Offline: Streamlit frontend
+main.py — PathShala Offline: Streamlit frontend  (Phase 2)
 
-Phase 1: single-page UI with language, grade, subject, question, answer.
-Phase 2 additions: streaming, simplify button, markdown output.
+Phase 2 additions over Phase 1:
+  - Live streaming output with real-time markdown rendering
+  - "Explain simpler" button calls simplify()
+  - Quality badge shows QC result after each answer
+  - Session history in sidebar (in-memory, Phase 3 adds SQLite)
+  - Language-purity indicator
 """
 
 import streamlit as st
 from app.tutor_engine import TutorEngine
 from app.language import SUPPORTED_LANGUAGES, SUBJECTS, GRADE_LEVELS, get_ui
 
-# ── Page config ──────────────────────────────────────────────────────────────
+# ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="PathShala Offline — AI Tutor",
     page_icon="📚",
     layout="centered",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
 # ── Custom CSS ────────────────────────────────────────────────────────────────
@@ -26,86 +30,141 @@ st.markdown(
     html, body, [class*="css"] {
         font-family: 'Noto Sans', 'Noto Sans Devanagari', sans-serif;
     }
-    .main { background: #0f1117; }
 
-    /* Header banner */
+    /* ── Header banner ── */
     .ps-header {
-        background: linear-gradient(135deg, #1a472a 0%, #2d6a4f 50%, #1b4332 100%);
+        background: linear-gradient(135deg, #0d2137 0%, #1a3a5c 50%, #0d2137 100%);
         border-radius: 16px;
-        padding: 2rem 2.5rem;
+        padding: 1.8rem 2.5rem;
         margin-bottom: 1.5rem;
-        border: 1px solid #40916c;
-        box-shadow: 0 8px 32px rgba(45,106,79,0.3);
+        border: 1px solid #2563eb;
+        box-shadow: 0 8px 32px rgba(37,99,235,0.25);
     }
     .ps-header h1 {
-        color: #d8f3dc;
-        font-size: 2rem;
+        color: #e0f2fe;
+        font-size: 1.9rem;
         font-weight: 700;
-        margin: 0 0 0.3rem 0;
+        margin: 0 0 0.25rem 0;
     }
     .ps-header p {
-        color: #95d5b2;
-        font-size: 1rem;
+        color: #93c5fd;
+        font-size: 0.95rem;
         margin: 0;
     }
 
-    /* Answer card */
+    /* ── Answer card ── */
     .answer-card {
-        background: #161b22;
-        border: 1px solid #30363d;
+        background: #0f172a;
+        border: 1px solid #1e3a5f;
+        border-left: 4px solid #2563eb;
         border-radius: 12px;
-        padding: 1.5rem;
+        padding: 1.4rem 1.6rem;
         margin-top: 1rem;
-        box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+        line-height: 1.75;
+        font-size: 1.02rem;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.5);
     }
 
-    /* Buttons */
+    /* ── Quality badge ── */
+    .badge-pass {
+        background: #052e16;
+        color: #4ade80;
+        border: 1px solid #4ade80;
+        border-radius: 20px;
+        padding: 3px 12px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        display: inline-block;
+        margin-right: 6px;
+    }
+    .badge-fail {
+        background: #3b0764;
+        color: #e879f9;
+        border: 1px solid #e879f9;
+        border-radius: 20px;
+        padding: 3px 12px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        display: inline-block;
+        margin-right: 6px;
+    }
+    .badge-offline {
+        background: #052e16;
+        color: #4ade80;
+        border: 1px solid #4ade80;
+        border-radius: 20px;
+        padding: 3px 12px;
+        font-size: 0.78rem;
+        font-weight: 600;
+    }
+    .badge-online {
+        background: #450a0a;
+        color: #f87171;
+        border: 1px solid #f87171;
+        border-radius: 20px;
+        padding: 3px 12px;
+        font-size: 0.78rem;
+        font-weight: 600;
+    }
+
+    /* ── Buttons ── */
     div.stButton > button {
         border-radius: 10px;
         font-weight: 600;
+        font-size: 0.95rem;
         transition: all 0.2s ease;
-        border: 1.5px solid #40916c;
     }
     div.stButton > button:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(64,145,108,0.4);
+        box-shadow: 0 4px 14px rgba(37,99,235,0.4);
     }
 
-    /* Offline badge */
-    .badge-offline {
-        background: #1e3a1e;
-        color: #52c41a;
-        border: 1px solid #52c41a;
-        border-radius: 20px;
-        padding: 4px 14px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        display: inline-block;
+    /* ── History item ── */
+    .history-item {
+        background: #1e293b;
+        border-radius: 8px;
+        padding: 0.5rem 0.75rem;
+        margin-bottom: 0.4rem;
+        font-size: 0.82rem;
+        color: #94a3b8;
+        border-left: 3px solid #334155;
+        cursor: pointer;
     }
-    .badge-online {
-        background: #3a1e1e;
-        color: #ff4d4f;
-        border: 1px solid #ff4d4f;
-        border-radius: 20px;
-        padding: 4px 14px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        display: inline-block;
+    .history-item:hover {
+        border-left-color: #2563eb;
+        color: #e2e8f0;
+    }
+
+    /* ── Streamlit sidebar background ── */
+    [data-testid="stSidebar"] {
+        background: #0f172a;
+    }
+
+    /* ── Metrics ── */
+    [data-testid="metric-container"] {
+        background: #1e293b;
+        border-radius: 8px;
+        padding: 0.6rem;
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# ── Session state ─────────────────────────────────────────────────────────────
-if "language" not in st.session_state:
-    st.session_state.language = "English"
-if "last_answer" not in st.session_state:
-    st.session_state.last_answer = ""
-if "last_question" not in st.session_state:
-    st.session_state.last_question = ""
+# ── Session state init ────────────────────────────────────────────────────────
+defaults = {
+    "language": "English",
+    "last_answer": "",
+    "last_question": "",
+    "last_qc": None,
+    "session_history": [],   # list of {"q": str, "a": str, "lang": str}
+    "attempt_count": 0,
+}
+for key, val in defaults.items():
+    if key not in st.session_state:
+        st.session_state[key] = val
 
-# ── Engine (cached so it's not re-instantiated on every rerun) ────────────────
+# ── Engine (cached across reruns) ─────────────────────────────────────────────
 @st.cache_resource
 def get_engine():
     return TutorEngine()
@@ -116,18 +175,7 @@ engine = get_engine()
 lang = st.session_state.language
 ui = get_ui(lang)
 
-# ── Header ────────────────────────────────────────────────────────────────────
-st.markdown(
-    f"""
-    <div class="ps-header">
-        <h1>{ui['app_title']}</h1>
-        <p>{ui['app_subtitle']}</p>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-# ── Sidebar controls ──────────────────────────────────────────────────────────
+# ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("### ⚙️ Settings")
     selected_lang = st.selectbox(
@@ -140,78 +188,135 @@ with st.sidebar:
         st.session_state.language = selected_lang
         st.rerun()
 
-    selected_grade = st.selectbox(ui["grade_label"], GRADE_LEVELS, index=1, key="grade_selector")
-    selected_subject = st.selectbox(ui["subject_label"], SUBJECTS, index=0, key="subject_selector")
+    selected_grade = st.selectbox(ui["grade_label"], GRADE_LEVELS, index=1)
+    selected_subject = st.selectbox(ui["subject_label"], SUBJECTS, index=0)
 
+    # Connection status
     st.markdown("---")
-    st.markdown("**🔌 Model:** `gemma3n:e2b`")
+    ollama_ok = engine._is_ollama_running()
+    if ollama_ok:
+        st.markdown(
+            '<span class="badge-offline">🟢 Gemma Online</span>',
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            '<span class="badge-online">🔴 Ollama Offline</span>',
+            unsafe_allow_html=True,
+        )
+        st.caption("Run `ollama serve` to start")
+
+    st.markdown("**🤖 Model:** `gemma3n:e2b`")
     st.markdown("**💻 Mode:** 100% Offline")
-    st.markdown("**📡 Internet:** Not required")
 
-# ── Main content area ─────────────────────────────────────────────────────────
-col_lang, col_grade = st.columns(2)
-with col_lang:
-    st.info(f"🌐 {lang}", icon=None)
-with col_grade:
-    st.info(f"🎓 {selected_grade if 'selected_grade' in dir() else 'Grade 10'}", icon=None)
+    # Session history
+    st.markdown("---")
+    st.markdown(f"### {ui.get('history_tab', '📚 History')}")
+    if not st.session_state.session_history:
+        st.caption("No questions yet this session.")
+    else:
+        for i, item in enumerate(reversed(st.session_state.session_history[-8:])):
+            trunc_q = item["q"][:55] + "…" if len(item["q"]) > 55 else item["q"]
+            st.markdown(
+                f'<div class="history-item">#{len(st.session_state.session_history)-i} '
+                f'[{item["lang"]}] {trunc_q}</div>',
+                unsafe_allow_html=True,
+            )
 
+# ── Header ────────────────────────────────────────────────────────────────────
+st.markdown(
+    f"""
+    <div class="ps-header">
+        <h1>{ui['app_title']}</h1>
+        <p>{ui['app_subtitle']}</p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+# ── Controls row ──────────────────────────────────────────────────────────────
+c1, c2 = st.columns(2)
+c1.info(f"🌐 **{lang}** &nbsp;|&nbsp; 🎓 **{selected_grade}**")
+c2.info(f"📖 **{selected_subject}**")
+
+# ── Question input ────────────────────────────────────────────────────────────
 question = st.text_area(
     ui["question_label"],
     placeholder=ui["question_placeholder"],
-    height=120,
+    height=110,
     key="question_input",
 )
 
-col_ask, col_simplify = st.columns([2, 1])
+col_ask, col_simplify = st.columns([3, 2])
+ask_clicked = col_ask.button(
+    ui["ask_button"], use_container_width=True, type="primary"
+)
+simplify_clicked = col_simplify.button(
+    ui["simplify_button"],
+    use_container_width=True,
+    disabled=(st.session_state.last_answer == ""),
+    key="simplify_btn",
+)
 
-with col_ask:
-    ask_clicked = st.button(ui["ask_button"], use_container_width=True, type="primary")
-
-with col_simplify:
-    simplify_clicked = st.button(
-        ui["simplify_button"],
-        use_container_width=True,
-        disabled=(st.session_state.last_answer == ""),
-        key="simplify_btn",
-    )
-
-# ── Ask Guruji ────────────────────────────────────────────────────────────────
+# ── ASK GURUJI ───────────────────────────────────────────────────────────────
 if ask_clicked:
     if not question.strip():
         st.warning(ui["no_question"])
     else:
         st.session_state.last_question = question.strip()
         try:
-            with st.spinner(ui["thinking"]):
-                answer_placeholder = st.empty()
-                full_answer = ""
+            full_answer = ""
+            answer_placeholder = st.empty()
 
-                # Streaming output
+            with st.spinner(ui["thinking"]):
                 for chunk in engine.stream_explain(
                     question=question.strip(),
                     language=lang,
-                    grade_level=selected_grade if "selected_grade" in dir() else "Grade 10",
+                    grade_level=selected_grade,
                 ):
                     full_answer += chunk
+                    # Render markdown live with streaming cursor
                     answer_placeholder.markdown(
-                        f'<div class="answer-card">{full_answer}▌</div>',
+                        f'<div class="answer-card">\n\n{full_answer}▌\n\n</div>',
                         unsafe_allow_html=True,
                     )
 
-                # Final render without cursor
-                answer_placeholder.markdown(
-                    f'<div class="answer-card">{full_answer}</div>',
+            # Final render — no cursor
+            answer_placeholder.markdown(
+                f'<div class="answer-card">\n\n{full_answer}\n\n</div>',
+                unsafe_allow_html=True,
+            )
+
+            # Save to session state
+            st.session_state.last_answer = full_answer
+            st.session_state.session_history.append(
+                {"q": question.strip(), "a": full_answer, "lang": lang}
+            )
+
+            # Quality check badge
+            qc = engine.quality_check(full_answer, lang)
+            st.session_state.last_qc = qc
+            if qc["passed"]:
+                st.markdown(
+                    f'<span class="badge-pass">✅ Quality OK</span> '
+                    f'<span style="color:#64748b;font-size:0.8rem">{qc["word_count"]} words</span>',
                     unsafe_allow_html=True,
                 )
-                st.session_state.last_answer = full_answer
+            else:
+                issues = " | ".join(qc["flags"])
+                st.markdown(
+                    f'<span class="badge-fail">⚠️ QC Flag</span> '
+                    f'<span style="color:#94a3b8;font-size:0.78rem">{issues}</span>',
+                    unsafe_allow_html=True,
+                )
 
-        except ConnectionError as e:
+        except ConnectionError:
             st.error(ui["error_ollama"])
-            st.code(str(e))
+            st.code("ollama serve", language="bash")
         except Exception as e:
             st.error(f"❌ Unexpected error: {e}")
 
-# ── Simplify ──────────────────────────────────────────────────────────────────
+# ── SIMPLIFY ─────────────────────────────────────────────────────────────────
 if simplify_clicked and st.session_state.last_answer:
     try:
         with st.spinner(ui["thinking"]):
@@ -219,12 +324,22 @@ if simplify_clicked and st.session_state.last_answer:
                 original_answer=st.session_state.last_answer,
                 language=lang,
             )
-            st.markdown("### 🔁 Simpler Explanation")
+        st.markdown("### 🔁 Simpler Explanation")
+        st.markdown(
+            f'<div class="answer-card">\n\n{simpler}\n\n</div>',
+            unsafe_allow_html=True,
+        )
+        st.session_state.last_answer = simpler
+
+        # QC the simplified answer
+        qc = engine.quality_check(simpler, lang)
+        if qc["passed"]:
             st.markdown(
-                f'<div class="answer-card">{simpler}</div>',
+                f'<span class="badge-pass">✅ Quality OK</span> '
+                f'<span style="color:#64748b;font-size:0.8rem">{qc["word_count"]} words</span>',
                 unsafe_allow_html=True,
             )
-            st.session_state.last_answer = simpler
+
     except ConnectionError:
         st.error(ui["error_ollama"])
     except Exception as e:
@@ -233,8 +348,9 @@ if simplify_clicked and st.session_state.last_answer:
 # ── Footer ────────────────────────────────────────────────────────────────────
 st.markdown("---")
 st.markdown(
-    "<p style='text-align:center;color:#666;font-size:0.8rem;'>"
-    "PathShala Offline • Powered by Gemma 3n (local) • MIT License"
+    "<p style='text-align:center;color:#475569;font-size:0.78rem;'>"
+    "PathShala Offline &nbsp;•&nbsp; Gemma 3n (local) &nbsp;•&nbsp; "
+    "100% offline after model download &nbsp;•&nbsp; MIT License"
     "</p>",
     unsafe_allow_html=True,
 )
