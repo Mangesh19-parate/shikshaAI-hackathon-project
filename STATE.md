@@ -1,13 +1,17 @@
 # PathShala Offline — Build State
 
 ## Current Phase
-**Phase 1 — SCAFFOLD & LOCAL GEMMA**
+**Phase 1 — SCAFFOLD & LOCAL GEMMA** ✅ Code Complete — Awaiting Ollama
 
 ## Last Completed Sub-task
-**1.7** — README.md written with 2-command setup section
+**GATE 1 partial** — pytest ✅ (4 passed, 6 skipped), Streamlit UI launches ✅, UI smoke test ✅ (connection error correctly shown — Ollama not yet running)
 
 ## Next Sub-task
-**GATE 1 verification** — run pytest, launch Streamlit, take smoke-test screenshot → `media/gate1_proof.png`, git tag `phase-1-complete`
+**GATE 1 final** — User must:
+1. Run `ollama serve` in a terminal
+2. Run `ollama pull gemma3n:e2b` (one-time, ~2GB)
+3. Then re-run the Streamlit smoke test: ask "Solve 2x+5=15" → capture screenshot → save to `media/gate1_proof.png`
+4. Mark `phase-1-complete` git tag
 
 ## Sub-task Completion Log
 
@@ -22,17 +26,31 @@
 | 1.7 | README.md — 2-command setup | ✅ Done | 2026-05-09T20:23 IST |
 | 1.8 | app/prompts.py — Socratic prompts (EN/HI/MR) | ✅ Done | 2026-05-09T20:19 IST |
 | 1.9 | app/language.py — UI strings | ✅ Done | 2026-05-09T20:20 IST |
-| GATE 1 | pytest + Streamlit smoke test | ⏳ Pending | — |
+| pytest 4/4 | Unit tests pass (integration skipped) | ✅ Done | 2026-05-09T20:25 IST |
+| Streamlit | App launches at localhost:8501 | ✅ Done | 2026-05-09T20:30 IST |
+| ollama 0.6.2 fix | Response parsing fixed for Pydantic API | ✅ Done | 2026-05-09T20:31 IST |
+| GATE 1 | pytest + Streamlit smoke test | ⏳ Awaiting Ollama | — |
 
 ## Blockers
-None. Waiting for human to:
-1. Run `pip install -r requirements.txt`
-2. Run `ollama serve` (if not already running)
-3. Ensure `gemma3n:e2b` is pulled: `ollama pull gemma3n:e2b`
-4. Run `pytest tests/ -v` (unit tests pass without Ollama)
-5. Run `streamlit run app/main.py`
-6. Take screenshot → save as `media/gate1_proof.png`
-7. Run `git tag phase-1-complete`
+🚧 **BLOCKER: Ollama not running / gemma3n:e2b not pulled**
+
+The Streamlit UI is fully built and running. Pytest passes (4/4). The app correctly shows a connection error when Ollama is offline.
+
+To unblock Gate 1, you need to run these **one time** (needs internet for model download):
+```powershell
+# Terminal 1 — keep this running
+ollama serve
+
+# Terminal 2 — one-time download (~2GB)
+ollama pull gemma3n:e2b
+```
+
+After that:
+```powershell
+# Ask Guruji "Solve 2x + 5 = 15" in the browser at http://localhost:8501
+# Screenshot → save to media/gate1_proof.png
+# Then tell the agent to continue
+```
 
 ## Phase 2 Preview (once Gate 1 passes)
 - Upgrade prompts (already written in prompts.py!)
@@ -42,11 +60,14 @@ None. Waiting for human to:
 - Manual quality review
 
 ## Architecture Decisions
-- `TutorEngine` uses `ollama` Python client (not raw requests) for cleaner API
+- `TutorEngine` uses `ollama` Python client v0.6.2 (Pydantic ChatResponse objects)
+- Response parsing: `response.message.content` with dict fallback for compatibility
 - System prompts pre-built for all 3 languages — reduces phase 2 work
 - Streaming already wired in Phase 1 main.py to avoid double-refactor
 - Tests split: unit (always run) + integration (skipped by default, needs Ollama)
+- Anaconda Python 3.12.7 at `C:\Users\HP\anaconda3\python.exe`
+- Streamlit 1.37.1, ollama 0.6.2, pytest 7.4.4, pyttsx3 2.99
 
 ---
-*Auto-updated by PathShala Build Agent*  
-*Last updated: 2026-05-09T20:23:00+05:30*
+*Auto-updated by PathShala Build Agent*
+*Last updated: 2026-05-09T20:35:00+05:30*

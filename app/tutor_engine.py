@@ -74,6 +74,10 @@ class TutorEngine:
                 messages=messages,
                 stream=False,
             )
+            # ollama >= 0.4 returns a Pydantic ChatResponse object
+            if hasattr(response, "message"):
+                return response.message.content
+            # fallback for older dict-style response
             return response["message"]["content"]
         except Exception as exc:
             raise RuntimeError(f"Model inference failed: {exc}") from exc
@@ -129,6 +133,8 @@ class TutorEngine:
                 messages=messages,
                 stream=False,
             )
+            if hasattr(response, "message"):
+                return response.message.content
             return response["message"]["content"]
         except Exception as exc:
             raise RuntimeError(f"Simplify failed: {exc}") from exc
@@ -152,6 +158,10 @@ class TutorEngine:
             stream=True,
         )
         for chunk in stream:
-            content = chunk.get("message", {}).get("content", "")
+            # ollama >= 0.4: chunk is a ChatResponse Pydantic object
+            if hasattr(chunk, "message"):
+                content = chunk.message.content or ""
+            else:
+                content = chunk.get("message", {}).get("content", "")
             if content:
                 yield content
