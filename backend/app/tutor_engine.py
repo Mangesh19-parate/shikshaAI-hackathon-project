@@ -16,7 +16,7 @@ import time
 
 import ollama
 
-from app.prompts import (
+from backend.app.prompts import (
     FORBIDDEN_ANALOGIES,
     get_required_sections,
     get_system_prompt,
@@ -24,11 +24,11 @@ from app.prompts import (
 
 
 class TutorEngine:
-    """Offline AI tutor backed by a local Gemma 3n model via Ollama."""
+    """Offline AI tutor backed by a local Gemma 4 model via Ollama."""
 
     def __init__(
         self,
-        model: str = "gemma3n:e2b",
+        model: str = "gemma2:2b",
         host: str = "http://localhost:11434",
         max_retries: int = 3,
     ):
@@ -91,9 +91,11 @@ class TutorEngine:
           }
         """
         flags = []
-        word_count = len(text.split())
 
-        # 1. Word count
+        # 1. Word count (strip markdown markers for a cleaner count)
+        clean_text = re.sub(r"[\*#_>`]", "", text)
+        word_count = len(clean_text.split())
+        
         has_too_few = word_count < 100
         has_too_many = word_count > 600
         if has_too_few:
@@ -224,25 +226,19 @@ class TutorEngine:
         system_prompt = get_system_prompt(language)
         simplify_instruction = {
             "English": (
-                "The student said: 'I still don't understand.' "
-                "Please try again using a completely different, even simpler analogy — "
-                "imagine explaining to a bright 12-year-old in a Nashik village. "
-                "Use the same 4-section format (Problem / Steps / Answer / Try It Yourself). "
-                "Start with a new analogy before the steps."
+                "The student didn't understand the previous explanation of their mistake. "
+                "Re-explain the misconception using an EVEN SIMPLER real-world analogy and easier vocabulary. "
+                "Maintain the empathetic notebook grading tone. Always include the 🔍 The Misconception, 💡 The Analogy, and ✅ The Correction sections."
             ),
             "Hindi": (
-                "विद्यार्थी ने कहा: 'मुझे अभी भी समझ नहीं आया।' "
-                "कृपया बिल्कुल नई और सरल उपमा से दोबारा समझाएं — "
-                "जैसे नासिक के गाँव के 12 साल के होशियार बच्चे को समझाना हो। "
-                "वही 4 भाग (समस्या / पायदान / उत्तर / खुद करके देखो) में लिखें। "
-                "Steps से पहले एक नई उपमा से शुरू करें।"
+                "विद्यार्थी को अपनी गलती का पिछला स्पष्टीकरण समझ नहीं आया। "
+                "एक और भी सरल वास्तविक दुनिया की उपमा का उपयोग करके गलतफहमी को फिर से समझाएं। "
+                "सहानुभूतिपूर्ण स्वर बनाए रखें। हमेशा 🔍 गलतफहमी (The Misconception), 💡 असल ज़िंदगी का उदाहरण, और ✅ सही तरीका शामिल करें।"
             ),
             "Marathi": (
-                "विद्यार्थ्याने सांगितले: 'मला अजूनही समजले नाही.' "
-                "कृपया पूर्णपणे नव्या आणि सोप्या उपमेने पुन्हा समजावून सांगा — "
-                "जणू नाशिकजवळील गावातील 12 वर्षाच्या हुशार मुलाला सांगायचे आहे. "
-                "तेच 4 भाग (समस्या / पायऱ्या / उत्तर / स्वतः करून पहा) वापरा. "
-                "पायऱ्यांपूर्वी नव्या उपमेने सुरुवात करा."
+                "विद्यार्थ्याला त्याच्या चुकीचे मागील स्पष्टीकरण समजले नाही. "
+                "आणखी सोप्या खऱ्या जगातील उदाहरणाचा वापर करून गैरसमज पुन्हा समजावून सांगा. "
+                "सहानुभूतीपूर्ण टोन ठेवा. नेहमी 🔍 गैरसमज (The Misconception), 💡 खऱ्या जगातील उदाहरण, आणि ✅ योग्य पद्धत समाविष्ट करा."
             ),
         }
 

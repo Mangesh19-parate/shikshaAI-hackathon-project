@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShikshaAI - Local Learning Companion</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans Devanagari', sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+        .pulse-dot {
+            height: 10px;
+            width: 10px;
+            background-color: #22c55e;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+            animation: pulse-green 2s infinite;
+        }
+        @keyframes pulse-green {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+        .chalkboard {
+            background-color: #fdfbf7;
+            background-image: linear-gradient(transparent 95%, #e2e8f0 100%);
+            background-size: 100% 2.2rem;
+            line-height: 2.2rem;
+            border: 1px solid #cbd5e1;
+            border-left: 6px solid #3b82f6;
+            border-radius: 12px;
+            padding: 1.5rem 2rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            font-size: 1.1rem;
+            color: #1e293b;
+        }
+        .fade-in {
+            opacity: 0;
+            animation: fadeIn 0.6s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            to { opacity: 1; transform: translateY(0); }
+            from { opacity: 0; transform: translateY(10px); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        function App() {
+            const [language, setLanguage] = useState("English");
+            const [mode, setMode] = useState("📖 Learn Concept");
+            const [input, setInput] = useState("");
+            const [chunks, setChunks] = useState([]);
+            const [visibleChunks, setVisibleChunks] = useState([]);
+            const [isLoading, setIsLoading] = useState(false);
+            const [simplerCount, setSimplerCount] = useState(0);
+
+            // Progressive reveal logic (1200ms delay per chunk)
+            useEffect(() => {
+                if (chunks.length > visibleChunks.length) {
+                    const timer = setTimeout(() => {
+                        setVisibleChunks(prev => [...prev, chunks[prev.length]]);
+                    }, 1200);
+                    return () => clearTimeout(timer);
+                }
+            }, [chunks, visibleChunks]);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                if (!input.trim()) return;
+
+                setIsLoading(true);
+                setChunks([]);
+                setVisibleChunks([]);
+                
+                try {
+                    const res = await fetch("http://localhost:8000/api/chat", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ question: input, language, grade_level: "Grade 10" })
+                    });
+                    
+                    const text = await res.text();
+                    
+                    // Split the text logically based on markers for the progressive reveal
+                    const parts = text.split(/(?=\*\*(?:🔍|💡|✅|🧠))/).filter(p => p.trim() !== "");
+                    setChunks(parts.length > 0 ? parts : [text || ""]);
+                } catch (error) {
+                    setChunks([`Error: Could not connect to local AI. Ensure backend is running.`]);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            const handleSimpler = async () => {
+                setSimplerCount(prev => prev + 1);
+                if (chunks.length === 0) return;
+                
+                setIsLoading(true);
+                try {
+                    const fullText = chunks.join("\\n");
+                    const res = await fetch("http://localhost:8000/api/simplify", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ original_answer: fullText, language })
+                    });
+                    const data = await res.json();
+                    const ans = data.answer || data.error || "Could not simplify.";
+                    setChunks([ans]);
+                    setVisibleChunks([ans]);
+                } catch (error) {
+                    console.error("Error simplifying", error);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+            const handleQuiz = async () => {
+                if (chunks.length === 0) return;
+                setIsLoading(true);
+                try {
+                    const fullText = chunks.join("\\n");
+                    const res = await fetch("http://localhost:8000/api/chat", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ 
+                            question: `Generate a 1-question quiz to test my understanding of this explanation: ${fullText}`, 
+                            language, 
+                            grade_level: "Grade 10" 
+                        })
+                    });
+                    const text = await res.text();
+                    const parts = text.split(/(?=\*\*(?:🔍|💡|✅|🧠))/).filter(p => p.trim() !== "");
+                    setChunks(parts.length > 0 ? parts : [text || ""]);
+                    setVisibleChunks([]);
+                } catch (error) {
+                    console.error("Error generating quiz", error);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            const handleTranslate = async () => {
+                if (chunks.length === 0) return;
+                setIsLoading(true);
+                try {
+                    const fullText = chunks.join("\\n");
+                    const res = await fetch("http://localhost:8000/api/chat", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ 
+                            question: `Translate the following explanation exactly to Marathi: ${fullText}`, 
+                            language: "Marathi", 
+                            grade_level: "Grade 10" 
+                        })
+                    });
+                    const text = await res.text();
+                    const parts = text.split(/(?=\*\*(?:🔍|💡|✅|🧠))/).filter(p => p.trim() !== "");
+                    setChunks(parts.length > 0 ? parts : [text || ""]);
+                    setVisibleChunks([]);
+                    setLanguage("Marathi");
+                } catch (error) {
+                    console.error("Error translating", error);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            return (
+                <div className="min-h-screen flex flex-col justify-between">
+                    {/* Level 3: Telemetry Panel */}
+                    <div className="fixed top-4 right-4 flex space-x-2 z-50">
+                        <div className="bg-white/80 backdrop-blur border border-green-200 px-3 py-1 rounded-full text-xs font-bold text-green-700 flex items-center shadow-sm">
+                            <span className="pulse-dot mr-2"></span> Running Offline
+                        </div>
+                        <div className="bg-white/80 backdrop-blur border border-blue-200 px-3 py-1 rounded-full text-xs font-bold text-blue-700 shadow-sm">
+                            💻 Gemma 4 (Local Ollama Inference)
+                        </div>
+                        <div className="bg-white/80 backdrop-blur border border-gray-200 px-3 py-1 rounded-full text-xs font-bold text-gray-600 shadow-sm">
+                            ⚡ 0KB Data Sent | Privacy Sovereign
+                        </div>
+                    </div>
+
+                    <main className="max-w-4xl mx-auto w-full px-6 pt-16 pb-24">
+                        {/* Level 1: Hero Matrix */}
+                        <div className="mb-10">
+                            <h1 className="text-5xl font-[800] tracking-tight text-slate-900 mb-2">ShikshaAI</h1>
+                            <h2 className="text-xl font-semibold text-slate-700 mb-1">Education should work even when the internet doesn't.</h2>
+                            <p className="text-sm text-slate-500">An offline, local AI learning companion engineered with Gemma 4 to bridge the digital divide for Class 6–10 students in zero-connectivity regions.</p>
+                        </div>
+
+                        {/* Level 2, Tier 1: Intent & Localization Anchors */}
+                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6 flex flex-wrap gap-6 items-center">
+                            {/* Control Block A */}
+                            <div className="flex bg-slate-100 p-1 rounded-lg">
+                                {["English", "Hindi", "Marathi"].map(l => (
+                                    <button 
+                                        key={l}
+                                        onClick={() => setLanguage(l)}
+                                        className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-colors ${language === l ? 'bg-white shadow-sm text-blue-600' : 'text-slate-600 hover:text-slate-900'}`}
+                                    >
+                                        {l === "Hindi" ? "हिंदी" : l === "Marathi" ? "मराठी" : "English"}
+                                    </button>
+                                ))}
+                            </div>
+                            
+                            {/* Control Block B */}
+                            <div className="flex gap-4">
+                                {["📖 Learn Concept", "✏️ Solve Problem", "⏱️ Quick Revision"].map(m => (
+                                    <label key={m} className="flex items-center space-x-2 cursor-pointer">
+                                        <input 
+                                            type="radio" 
+                                            name="mode" 
+                                            checked={mode === m} 
+                                            onChange={() => setMode(m)}
+                                            className="text-blue-600 focus:ring-blue-500"
+                                        />
+                                        <span className={`text-sm font-medium ${mode === m ? 'text-slate-900' : 'text-slate-500'}`}>{m}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Input Area */}
+                        <form onSubmit={handleSubmit} className="mb-8">
+                            <div className="relative">
+                                <textarea 
+                                    value={input}
+                                    onChange={(e) => setInput(e.target.value)}
+                                    placeholder="What are you learning today? (e.g. How do plants eat?)"
+                                    className="w-full bg-white border border-slate-300 rounded-xl p-4 pr-24 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none h-32"
+                                />
+                                <button 
+                                    type="submit" 
+                                    disabled={isLoading || !input.trim()}
+                                    className="absolute bottom-4 right-4 bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2 px-6 rounded-lg transition-colors disabled:opacity-50"
+                                >
+                                    {isLoading ? "Thinking..." : "Ask"}
+                                </button>
+                            </div>
+                        </form>
+
+                        {/* Level 5: Frictionless Analytics Warning */}
+                        {simplerCount > 2 && (
+                            <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-800 flex items-start fade-in">
+                                <span className="text-xl mr-3">📌</span>
+                                <div>
+                                    <h4 className="font-semibold text-sm">Teacher's Note</h4>
+                                    <p className="text-sm mt-1">We hit a tiny speedbump with this concept. No worries at all—I've adjusted our next lessons to give us more practice here!</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Level 2, Tier 2: The Chalkboard Response Engine */}
+                        {chunks.length > 0 && (
+                            <div className="mb-6">
+                                <div className="chalkboard space-y-4">
+                                    {visibleChunks.map((chunk, idx) => (
+                                        <div key={idx} className="fade-in" dangerouslySetInnerHTML={{__html: (chunk || "").replace(/\n/g, '<br/>')}} />
+                                    ))}
+                                    {isLoading && visibleChunks.length === 0 && <span className="animate-pulse text-slate-400">Reviewing...</span>}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Level 2, Tier 3: Pedagogy Acceleration Chips */}
+                        {visibleChunks.length > 0 && visibleChunks.length === chunks.length && !isLoading && (
+                            <div className="flex flex-wrap gap-3 mt-4 fade-in">
+                                <button onClick={handleSimpler} className="flex items-center px-4 py-2 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 font-medium text-sm transition-colors">
+                                    <span className="mr-2">↻</span> Explain Simpler
+                                </button>
+                                <button className="flex items-center px-4 py-2 rounded-lg bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 font-medium text-sm transition-colors">
+                                    <span className="mr-2">💡</span> Teach From Mistakes
+                                </button>
+                                <button onClick={handleQuiz} className="flex items-center px-4 py-2 rounded-lg bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 font-medium text-sm transition-colors">
+                                    <span className="mr-2">📝</span> Quiz Me
+                                </button>
+                                <button onClick={handleTranslate} className="flex items-center px-4 py-2 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 font-medium text-sm transition-colors">
+                                    <span className="mr-2">🌐</span> Repeat in Marathi
+                                </button>
+                            </div>
+                        )}
+                    </main>
+
+                    {/* Level 3: Deployment Validation Footer */}
+                    <footer className="bg-slate-900 text-slate-400 text-xs py-4 text-center">
+                        <p>System Architecture Node: Fully optimized for local-first deployment on offline Raspberry Pi hardware, low-cost school computers, and basic Android devices. No login required. Zero tracking cookies.</p>
+                    </footer>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

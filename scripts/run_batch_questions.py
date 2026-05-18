@@ -9,7 +9,7 @@ Usage (from repo root):
 
 Requirements:
     - ollama serve must be running
-    - gemma3n:e2b model must be pulled
+    - gemma2:2b model must be pulled
 """
 
 import json
@@ -36,12 +36,12 @@ def main():
     engine = TutorEngine()
 
     if not engine._is_ollama_running():
-        print("\n❌ ERROR: Ollama is not running.")
-        print("   Start it with: ollama serve")
-        print("   Then pull model: ollama pull gemma3n:e2b")
+        print("\n[!] ERROR: Ollama is not running.")
+        print("    Start it with: ollama serve")
+        print("    Then pull model: ollama pull gemma2:2b")
         sys.exit(1)
 
-    print("✅ Ollama connected\n")
+    print("[+] Ollama connected\n")
 
     # Load questions
     questions = json.loads(QUESTIONS_FILE.read_text(encoding="utf-8"))
@@ -70,7 +70,7 @@ def main():
             )
             qc = engine.quality_check(answer, lang)
 
-            status_icon = "✅" if qc["passed"] else "⚠️"
+            status_icon = "[OK]" if qc["passed"] else "[!!]"
             print(f"  {status_icon} {qc['word_count']} words | attempts={attempts} | flags={qc['flags'] or 'none'}")
 
             if qc["passed"]:
@@ -91,10 +91,10 @@ def main():
             })
 
         except ConnectionError as e:
-            print(f"  ❌ Connection error: {e}")
+            print(f"  [!] Connection error: {e}")
             sys.exit(1)
         except Exception as e:
-            print(f"  ❌ Error: {e}")
+            print(f"  [!] Error: {e}")
             results.append({
                 "qid": qid,
                 "lang": lang,
@@ -115,8 +115,8 @@ def main():
     # ── Write test_outputs.md ─────────────────────────────────────────────────
     write_markdown(results, passed_count, flagged_count)
     print(f"\n{'=' * 60}")
-    print(f"✅ Passed: {passed_count}/{len(questions)}")
-    print(f"⚠️  Flagged: {flagged_count}/{len(questions)}")
+    print(f"[OK] Passed: {passed_count}/{len(questions)}")
+    print(f"[!!] Flagged: {flagged_count}/{len(questions)}")
     print(f"\nOutputs saved to: {OUTPUT_FILE}")
 
     if flagged_count > 0:
@@ -130,7 +130,7 @@ def write_markdown(results: list, passed: int, flagged: int):
         "# PathShala Offline — Batch Test Outputs (Phase 2.4)",
         "",
         f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  ",
-        f"**Model:** gemma3n:e2b  ",
+        f"**Model:** gemma2:2b  ",
         f"**Total Questions:** {len(results)}  ",
         f"**Quality Check Passed:** {passed}/{len(results)}  ",
         f"**Flagged:** {flagged}/{len(results)}",

@@ -25,20 +25,22 @@
 
 ---
 
-## Phase 2.5 — Manual Quality Review
+## Phase 2.5 — Manual Quality Review (Human Feedback)
 
-Human reviewer: read 3 outputs and check:
+Reviewer, please read 3 outputs and tick the boxes if the criteria are met:
 
-| Check | Q1 (M001) | Q2 (S001) | Q3 (M003) |
-|---|---|---|---|
-| Indian rural analogy present? | [ ] | [ ] | [ ] |
-| Steps numbered correctly? | [ ] | [ ] | [ ] |
-| Sounds like a teacher (not robot)? | [ ] | [ ] | [ ] |
-| Language pure (no wrong-lang mix)? | [ ] | [ ] | [ ] |
-| 'Try It Yourself' included? | [ ] | [ ] | [ ] |
+| Check | Q1 (Math) | Q2 (Science) | Q3 (Language) |
+|---|:---:|:---:|:---:|
+| **Indian Rural Analogy:** Is the example culturally relevant? | [ ] | [ ] | [ ] |
+| **Pedagogy:** Is the explanation step-by-step and simple? | [ ] | [ ] | [ ] |
+| **Persona:** Does it sound like 'Guruji' (patient/warm)? | [ ] | [ ] | [ ] |
+| **Language Purity:** Is there any unwanted English/Hindi mix? | [ ] | [ ] | [ ] |
+| **Call to Action:** Is 'Try It Yourself' challenging but fair? | [ ] | [ ] | [ ] |
 
-**Verdict:** [ ] GATE 2 PASSED &nbsp;&nbsp; [ ] Needs prompt iteration
+**Final Verdict:**
+- [ ] **GATE 2 PASSED** — Prompts are solid.
+- [ ] **RETRY NEEDED** — Refine system prompts in `app/prompts.py`.
 
 ---
 
-*Will be overwritten with real outputs when batch runner executes.*
+*This file will be automatically updated with model responses when `scripts/run_batch_questions.py` is executed.*

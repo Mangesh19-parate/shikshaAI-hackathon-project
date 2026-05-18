@@ -10,7 +10,7 @@ Test classes:
 Run unit tests only (no Ollama):
     pytest tests/ -v
 
-Run integration tests (need: ollama serve + gemma3n:e2b pulled):
+Run integration tests (need: ollama serve + gemma2:2b pulled):
     pytest tests/ -v -m integration
 """
 
@@ -41,7 +41,7 @@ def engine():
 
 class TestEngineInit:
     def test_default_model(self, engine):
-        assert engine.model == "gemma3n:e2b"
+        assert engine.model == "gemma2:2b"
 
     def test_default_host(self, engine):
         assert engine.host == "http://localhost:11434"
@@ -274,7 +274,7 @@ class TestPromptsModule:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Integration tests — require Ollama + gemma3n:e2b
+# Integration tests — require Ollama + gemma2:2b
 # ─────────────────────────────────────────────────────────────────────────────
 
 @pytest.mark.integration
@@ -282,7 +282,7 @@ class TestEngineIntegration:
     """
     GATE 1 + GATE 2 integration tests.
     Run with: pytest tests/ -v -m integration
-    (Requires: ollama serve + gemma3n:e2b pulled)
+    (Requires: ollama serve + gemma2:2b pulled)
     """
 
     def test_algebra_answer_contains_x_equals_5(self, engine):
