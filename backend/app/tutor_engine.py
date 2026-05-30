@@ -13,8 +13,10 @@ All methods gracefully handle the case where Ollama is not running.
 
 import re
 import time
+import os
 
 import ollama
+from huggingface_hub import InferenceClient
 
 from backend.app.prompts import (
     FORBIDDEN_ANALOGIES,
@@ -35,14 +37,22 @@ class TutorEngine:
         self.model = model
         self.host = host
         self.max_retries = max_retries
-        self._client = ollama.Client(host=host)
+        self.use_hf = os.environ.get("USE_HF_API", "false").lower() == "true"
+        self.hf_model = os.environ.get("HF_MODEL", "google/gemma-1.1-7b-it")
+        
+        if self.use_hf:
+            self._hf_client = InferenceClient(self.hf_model)
+        else:
+            self._client = ollama.Client(host=host)
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
 
     def _is_ollama_running(self) -> bool:
-        """Return True if the Ollama server responds."""
+        """Return True if the Ollama server responds or if using HF."""
+        if self.use_hf:
+            return True
         try:
             self._client.list()
             return True
@@ -159,12 +169,16 @@ class TutorEngine:
 
         messages = self._build_messages(question, language, grade_level)
         try:
-            response = self._client.chat(
-                model=self.model,
-                messages=messages,
-                stream=False,
-            )
-            return self._extract_content(response)
+            if self.use_hf:
+                res = self._hf_client.chat_completion(messages=messages, max_tokens=1000, stream=False)
+                return res.choices[0].message.content or ""
+            else:
+                response = self._client.chat(
+                    model=self.model,
+                    messages=messages,
+                    stream=False,
+                )
+                return self._extract_content(response)
         except Exception as exc:
             raise RuntimeError(f"Model inference failed: {exc}") from exc
 
@@ -253,12 +267,16 @@ class TutorEngine:
             },
         ]
         try:
-            response = self._client.chat(
-                model=self.model,
-                messages=messages,
-                stream=False,
-            )
-            return self._extract_content(response)
+            if self.use_hf:
+                res = self._hf_client.chat_completion(messages=messages, max_tokens=1000, stream=False)
+                return res.choices[0].message.content or ""
+            else:
+                response = self._client.chat(
+                    model=self.model,
+                    messages=messages,
+                    stream=False,
+                )
+                return self._extract_content(response)
         except Exception as exc:
             raise RuntimeError(f"Simplify failed: {exc}") from exc
 
@@ -282,12 +300,22 @@ class TutorEngine:
             )
 
         messages = self._build_messages(question, language, grade_level)
-        stream = self._client.chat(
-            model=self.model,
-            messages=messages,
-            stream=True,
-        )
-        for chunk in stream:
-            content = self._extract_chunk(chunk)
-            if content:
-                yield content
+        if self.use_hf:
+            stream = self._hf_client.chat_completion(
+                messages=messages,
+                max_tokens=1000,
+                stream=True,
+            )
+            for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content
+        else:
+            stream = self._client.chat(
+                model=self.model,
+                messages=messages,
+                stream=True,
+            )
+            for chunk in stream:
+                content = self._extract_chunk(chunk)
+                if content:
+                    yield content

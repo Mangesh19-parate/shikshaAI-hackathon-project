@@ -65,24 +65,29 @@ PathShala Offline puts a patient, multilingual tutor on her laptop — forever.
 ```
 pathshala-offline/
 ├── backend/
-│   ├── app/
-│   │   ├── tutor_engine.py   # Gemma 3n integration (Ollama)
-│   │   ├── prompts.py        # Socratic system prompts (EN/HI/MR)
-│   │   └── language.py       # UI strings, language utilities
-│   └── main.py               # FastAPI backend
+│   ├── api/
+│   │   ├── auth/           # Dependencies and security
+│   │   ├── db/             # SQLite connection & ORM
+│   │   ├── middleware/     # Rate limiting & logging
+│   │   ├── models/         # Pydantic schemas
+│   │   ├── routes/         # FastAPI endpoints
+│   │   ├── services/       # LLM & RAG integration
+│   │   └── main.py         # FastAPI application
+│   └── Dockerfile          # Backend container definition
 ├── frontend/
-│   └── index.html            # Vanilla HTML/JS frontend
+│   ├── app.py              # Streamlit interface
+│   ├── Dockerfile          # Frontend container definition
+│   └── index.html          # Vanilla HTML fallback
 ├── data/
-│   ├── sample_questions.json # 10 SSC/CBSE questions
-│   └── lessons.db            # SQLite history (auto-created)
+│   └── ncert_pdfs/         # Curriculum dataset (DVC tracked)
 ├── scripts/
-│   ├── setup_ollama.sh       # One-time setup
-│   └── run.sh                # Start app
+│   ├── setup_ollama.sh     # Local model setup
+│   └── run.sh              # Start local dev environment
 ├── tests/
-│   └── test_engine.py        # pytest suite
-├── media/                    # Screenshots & recordings
-├── video/                    # Demo video assets
-└── submission/               # Kaggle submission package
+│   ├── test_api.py         # Integration tests
+│   └── conftest.py         # Pytest fixtures
+├── docker-compose.yml      # Multi-container orchestration
+└── submission/             # Kaggle & hackathon materials
 ```
 
 ---

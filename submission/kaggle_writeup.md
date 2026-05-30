@@ -1,30 +1,32 @@
-# PathShala Offline: A 100% Offline AI Tutor for Rural India
+# ShikshaAI: Offline AI Tutor for Rural India
+
+**Submission for the Gemma 3n Impact Challenge**
 
 ## The Problem
-Millions of students in rural India, like Priya in Nashik, Maharashtra, study for critical board exams (SSC/CBSE) without reliable internet access or the means to hire private tutors. While AI education tools have exploded in popularity, they almost universally rely on high-speed internet and expensive cloud infrastructure. This creates a growing digital divide where the students who most need personalized, patient, and multilingual tutoring are the least able to access it. Rural students often struggle with foundational concepts in subjects like algebra and science, and a lack of immediate, accessible help can lead to frustration and poor exam outcomes.
+Over 250 million students in rural India face a stark reality: inconsistent internet access and a severe shortage of quality educators. A student studying late at night for their 10th-grade board exams often has no one to turn to when they stumble on a complex algebra or science concept. While AI has revolutionized education in urban centers, the digital divide leaves these students behind. They need an intelligent, patient, and multilingual tutor that doesn't rely on a cloud connection.
 
 ## The Solution
-PathShala Offline bridges this gap by putting a patient, multilingual AI tutor directly on the student’s low-end laptop—completely offline. After a one-time download of the app and model, the entire experience requires zero internet connectivity. 
-
-Built using the Gemma 3n (E2B variant), PathShala provides step-by-step explanations using the Socratic method, guiding students to the answer rather than just giving it to them. It supports English, Hindi, and Marathi natively, allowing students to learn in their mother tongue. 
+**ShikshaAI (PathShala Offline)** is an offline-first AI learning companion designed to bridge this divide. It places a powerful, empathetic tutor directly on low-cost devices, functioning 100% locally without an internet connection. 
 
 Key features include:
-- **Live Streaming Output**: Fast, real-time responses that keep students engaged.
-- **"Explain Simpler" Feature**: A one-click button that prompts the AI to re-explain concepts using localized, rural-friendly analogies if the student doesn't understand the first time.
-- **Voice I/O**: Offline speech-to-text (Whisper.cpp) and text-to-speech (pyttsx3) integration, making it accessible for students with varying literacy levels.
-- **Lesson History**: Persistent SQLite-backed history so students can review past mistakes.
+1. **Multilingual Socratic Tutoring**: Native support for English, Hindi, and Marathi. Instead of just giving answers, ShikshaAI guides students step-by-step.
+2. **Zero-Connectivity Architecture**: Powered entirely by a local instance of Gemma 3n.
+3. **"Explain Simpler" Pedagogical Loop**: If a student is struggling, the system dynamically re-prompts the model to generate a simpler, real-world analogy grounded in rural Indian contexts.
 
 ## Architecture
-PathShala is designed for efficiency and resilience on local hardware. The architecture includes:
-- **Model Engine**: Gemma 3n running locally via Ollama. The `TutorEngine` handles model inference, streaming, and quality checks.
-- **Backend API**: A FastAPI server that connects the frontend to the Ollama backend and SQLite database.
-- **Frontend**: A clean, responsive HTML/JS UI (or Streamlit for web deployments) that works seamlessly offline.
-- **Quality Assurance Layer**: Custom validation logic that ensures the model outputs are at least 100 words, include numbered steps, use appropriate pedagogy, and avoid complex LaTeX that might confuse young learners.
+ShikshaAI is engineered for production-grade reliability while remaining lightweight:
+- **Model Layer**: We utilize the **Gemma 3n (E2B variant)** running via Ollama. It offers an incredible balance of low memory footprint and high reasoning capability, making it perfect for consumer hardware.
+- **Backend Serving**: A FastAPI layer serves the LLM locally, exposing robust endpoints for chat, streaming, and session management. This decouple the UI from the heavy model logic.
+- **Frontend**: A highly responsive, progressive UI built with Streamlit (and a vanilla HTML fallback), featuring progressively revealed markdown and active telemetry showing 0KB of data sent.
 
-## Key Learnings
-1. **Prompt Engineering for Local Models**: Getting a 3B parameter model to consistently use the Socratic method and avoid giving away the final answer required rigorous prompt iteration and strict formatting instructions.
-2. **Offline Hardware Constraints**: Running models on 8GB RAM CPU machines is challenging. We learned how to optimize Ollama's loading behavior and use streaming to reduce perceived latency.
-3. **Cultural Context Matters**: We built a "forbidden analogies" list to ensure the model used examples relevant to rural Indian life (e.g., farming, local markets) instead of Western-centric analogies (e.g., subways, snowflakes).
-4. **Resilience over Features**: We prioritized offline reliability above all else. Every feature, from voice to database storage, was chosen based on its ability to run completely disconnected.
+## Key Learnings & Future Roadmap
+Building ShikshaAI highlighted the immense potential of Gemma 3n for edge deployment. 
 
-PathShala Offline proves that powerful AI doesn't need the cloud. By leveraging optimized local models like Gemma 3n, we can bring world-class education to the most remote corners of the globe.
+**What we learned:**
+- **Prompt Engineering for Low-Resource Languages**: Translating Socratic methods into Hindi and Marathi required careful prompt tuning to avoid awkward, literal translations. We implemented strict fallback guidelines.
+- **Latency vs. Quality**: Streaming responses (Server-Sent Events) is critical for UX when running models locally on CPU-constrained devices.
+
+**What's Next:**
+We are currently evolving the architecture into a full MLOps pipeline. Phase 2 involves hybrid Retrieval-Augmented Generation (RAG) over NCERT (Indian Curriculum) PDFs using Qdrant, ensuring all answers are strictly grounded in the official syllabus. We will also implement MLflow for experiment tracking and GitHub Actions for automated evaluation gates to continuously improve the response quality.
+
+ShikshaAI isn't just a hackathon project; it's a blueprint for democratizing education across the Global South.
