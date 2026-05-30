@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - API_USER=${API_USER:-admin}
+      - API_PASSWORD=${API_PASSWORD:-secret}
+      # Point to host network if Ollama is running locally on the host
+      - OLLAMA_HOST=http://host.docker.internal:11434
+    volumes:
+      - ./backend:/app/backend
+    # Optional: If you run Ollama in Docker, you could add it as a service here
+    # network_mode: "host" can be used on Linux to easily access localhost services
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "8501:8501"
+    environment:
+      - API_URL=http://api:8000/api
+      - API_USER=${API_USER:-admin}
+      - API_PASSWORD=${API_PASSWORD:-secret}
+    volumes:
+      - ./frontend:/app/frontend
+    depends_on:
+      - api

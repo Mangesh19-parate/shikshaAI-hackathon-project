@@ -1,8 +1,13 @@
 # PathShala Offline 📚
 
-> **An offline AI tutor for rural Indian 9th–10th grade students preparing for SSC/CBSE board exams.**  
+![App Demo](media/demo.gif)
+
+> **Offline AI tutor for rural Indian students · Gemma 3n · Hindi/Marathi/English · Voice I/O · No internet required**  
 > Works entirely without internet after a one-time model download.  
 > Powered by **Gemma 3n (E2B variant)** running locally via Ollama.
+
+![Hindi Conversation](media/hindi_convo_screenshot.png)
+![Explain Simpler Feature](media/explain_simpler_screenshot.png)
 
 ---
 
@@ -59,22 +64,25 @@ PathShala Offline puts a patient, multilingual tutor on her laptop — forever.
 
 ```
 pathshala-offline/
-├── app/
-│   ├── main.py           # Streamlit UI
-│   ├── tutor_engine.py   # Gemma 3n integration (Ollama)
-│   ├── prompts.py        # Socratic system prompts (EN/HI/MR)
-│   └── language.py       # UI strings, language utilities
+├── backend/
+│   ├── app/
+│   │   ├── tutor_engine.py   # Gemma 3n integration (Ollama)
+│   │   ├── prompts.py        # Socratic system prompts (EN/HI/MR)
+│   │   └── language.py       # UI strings, language utilities
+│   └── main.py               # FastAPI backend
+├── frontend/
+│   └── index.html            # Vanilla HTML/JS frontend
 ├── data/
-│   ├── sample_questions.json  # 10 SSC/CBSE questions
-│   └── lessons.db             # SQLite history (auto-created)
+│   ├── sample_questions.json # 10 SSC/CBSE questions
+│   └── lessons.db            # SQLite history (auto-created)
 ├── scripts/
-│   ├── setup_ollama.sh   # One-time setup
-│   └── run.sh            # Start app
+│   ├── setup_ollama.sh       # One-time setup
+│   └── run.sh                # Start app
 ├── tests/
-│   └── test_engine.py    # pytest suite
-├── media/                # Screenshots & recordings
-├── video/                # Demo video assets
-└── submission/           # Kaggle submission package
+│   └── test_engine.py        # pytest suite
+├── media/                    # Screenshots & recordings
+├── video/                    # Demo video assets
+└── submission/               # Kaggle submission package
 ```
 
 ---
@@ -112,5 +120,5 @@ pytest tests/ -v
 
 Built for the [Gemma 3n Impact Challenge](https://kaggle.com) hackathon.  
 19-day build by a solo developer.  
-Video: [YouTube link — coming Phase 4]  
+Video: [YouTube Demo Link](https://youtube.com/...)  
 Writeup: [Kaggle link — coming Phase 5]
