@@ -1,0 +1,6 @@
+outs:
+- md5: ff59e814402fe3a569ecc30c1b232c03.dir
+  size: 18596368
+  nfiles: 3
+  hash: md5
+  path: qdrant_storage

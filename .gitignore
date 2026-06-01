@@ -51,3 +51,4 @@ logs/
 # Environment
 .env
 .env.*
+/qdrant_storage
