@@ -7,9 +7,16 @@ from sentence_transformers import SentenceTransformer
 from rank_bm25 import BM25Okapi
 
 class HybridRetriever:
-    def __init__(self, collection_name: str = "ncert_knowledge", qdrant_host: str = "localhost", qdrant_port: int = 6333):
+    def __init__(self, collection_name: str = "ncert_knowledge", qdrant_host: str = None, qdrant_port: int = 6333):
         self.collection_name = collection_name
-        self.qdrant_client = QdrantClient(host=qdrant_host, port=qdrant_port)
+        self.qdrant_host = qdrant_host or os.getenv("QDRANT_HOST", "")
+        
+        if self.qdrant_host and self.qdrant_host != "local":
+            self.qdrant_client = QdrantClient(host=self.qdrant_host, port=qdrant_port)
+        else:
+            # Fully offline local storage (no Docker needed)
+            os.makedirs("qdrant_storage", exist_ok=True)
+            self.qdrant_client = QdrantClient(path="qdrant_storage")
         self.embedding_model = SentenceTransformer('sentence-transformers/paraphrase-multilingual-mpnet-base-v2')
         self.bm25 = None
         self.documents = []

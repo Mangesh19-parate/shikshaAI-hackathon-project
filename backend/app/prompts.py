@@ -172,9 +172,21 @@ PROMPT_MAP = {
     "Marathi": SOCRATIC_TUTOR_MR,
 }
 
-def get_system_prompt(language: str) -> str:
-    """Return the system prompt for the given language (fallback: English)."""
-    return PROMPT_MAP.get(language, SOCRATIC_TUTOR_EN)
+def get_system_prompt(language: str, context: str = None) -> str:
+    """Return the system prompt for the given language (fallback: English), with optional RAG context."""
+    prompt = PROMPT_MAP.get(language, SOCRATIC_TUTOR_EN)
+    
+    if context:
+        rag_instruction = f"""
+═══ NCERT CURRICULUM CONTEXT ═══
+Answer ONLY based on the following NCERT content:
+{context}
+
+If the answer is not in the textbook context above, say so honestly. Do not make up information outside the NCERT curriculum.
+"""
+        prompt = prompt + "\n" + rag_instruction
+
+    return prompt
 
 def get_required_sections(language: str) -> list[str]:
     """Return the required section markers for quality checking."""

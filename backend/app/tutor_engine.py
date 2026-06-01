@@ -60,9 +60,16 @@ class TutorEngine:
             return False
 
     def _build_messages(
-        self, question: str, language: str, grade_level: str
+        self, question: str, language: str, grade_level: str, context: str = None
     ) -> list[dict]:
-        system_prompt = get_system_prompt(language)
+        """Build the messages array for the chat API, checking for forbidden words."""
+        question_lower = question.lower()
+        if any(word in question_lower for word in FORBIDDEN_ANALOGIES):
+            raise ValueError(
+                f"Question contains a forbidden analogy word. (e.g. {FORBIDDEN_ANALOGIES[0]})"
+            )
+
+        system_prompt = get_system_prompt(language, context=context)
         user_content = f"[{grade_level} | {language}]\n\n{question}"
         return [
             {"role": "system", "content": system_prompt},
@@ -151,36 +158,39 @@ class TutorEngine:
     # Phase 1 — basic single-shot explain
     # ------------------------------------------------------------------
 
-    def explain(
-        self,
-        question: str,
-        language: str = "English",
-        grade_level: str = "Grade 10",
-    ) -> str:
+    def explain(self, question: str, language: str = "English", grade_level: str = "Grade 10", context: str = None) -> str:
         """
-        Ask Gemma to explain the given question.
-        Returns the model response as a plain string.
-        Raises ConnectionError if Ollama is not running.
+        Main entry point for generating a Socratic explanation.
+        Validates input, calls the model, and runs quality checks.
+        Retries up to max_retries if quality checks fail.
         """
         if not self._is_ollama_running():
-            raise ConnectionError(
-                "Ollama is not running. Please start it with: ollama serve"
-            )
+            raise RuntimeError(f"Model server at {self.host} is not running.")
 
-        messages = self._build_messages(question, language, grade_level)
-        try:
-            if self.use_hf:
-                res = self._hf_client.chat_completion(messages=messages, max_tokens=1000, stream=False)
-                return res.choices[0].message.content or ""
-            else:
-                response = self._client.chat(
-                    model=self.model,
-                    messages=messages,
-                    stream=False,
-                )
-                return self._extract_content(response)
-        except Exception as exc:
-            raise RuntimeError(f"Model inference failed: {exc}") from exc
+        last_error = ""
+        for attempt in range(self.max_retries):
+            # 1. Build messages
+            try:
+                messages = self._build_messages(question, language, grade_level, context=context)
+            except ValueError as ve:
+                return str(ve)  # e.g., forbidden analogy in input.
+
+            # 2. Call model
+            try:
+                if self.use_hf:
+                    res = self._hf_client.chat_completion(messages=messages, max_tokens=1000, stream=False)
+                    return res.choices[0].message.content or ""
+                else:
+                    response = self._client.chat(
+                        model=self.model,
+                        messages=messages,
+                        stream=False,
+                    )
+                    return self._extract_content(response)
+            except Exception as exc:
+                last_error = str(exc)
+        
+        raise RuntimeError(f"Model inference failed after retries: {last_error}")
 
     # ------------------------------------------------------------------
     # Phase 2.2 — explain_with_retry
@@ -285,21 +295,22 @@ class TutorEngine:
     # ------------------------------------------------------------------
 
     def stream_explain(
-        self,
-        question: str,
-        language: str = "English",
-        grade_level: str = "Grade 10",
+        self, question: str, language: str = "English", grade_level: str = "Grade 10", context: str = None
     ):
         """
-        Generator that yields text chunks from Ollama's streaming API.
-        Use in Streamlit with st.write_stream() or manual accumulation.
+        Stream the response directly from the model.
+        NOTE: Cannot run quality checks on streamed output before sending to user.
         """
         if not self._is_ollama_running():
-            raise ConnectionError(
-                "Ollama is not running. Please start it with: ollama serve"
-            )
+            yield "Error: Model server at {self.host} is not running."
+            return
 
-        messages = self._build_messages(question, language, grade_level)
+        try:
+            messages = self._build_messages(question, language, grade_level, context=context)
+        except ValueError as ve:
+            yield str(ve)
+            return
+
         if self.use_hf:
             stream = self._hf_client.chat_completion(
                 messages=messages,

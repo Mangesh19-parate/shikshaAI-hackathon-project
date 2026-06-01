@@ -81,7 +81,7 @@ def ingest_pdfs(pdf_dir: str):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Ingest NCERT PDFs into the RAG vector DB.")
-    parser.add_argument("--pdf-dir", type=str, default="data/ncert_pdfs", help="Directory containing the PDFs")
+    parser.add_argument("--pdf-dir", type=str, default="data/ncert_pdf", help="Directory containing the PDFs")
     args = parser.parse_args()
     
     ingest_pdfs(args.pdf_dir)
